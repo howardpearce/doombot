@@ -8,6 +8,7 @@ This is assuming IntelliJ is being used, let me know if anyone wants to use ecli
 Ensure you have/are using a 64 bit JDK, otherwise you will get a fun error!
 
 STEPS:
+
   #1: Download the repository and put it inside a new Intellij project. Make sure everything is inside the SRC folder.
   
   #2: Configure the project structure to use vizdoom.jar
