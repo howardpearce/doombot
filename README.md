@@ -6,7 +6,7 @@ Setting this up will be different for each person looking to run vizDoom, I'll p
 
 This is assuming IntelliJ is being used, let me know if anyone wants to use eclipse and we'll work through that.
 
-Ensure you have/are using a 64 bit JDK, otherwise you will get an error
+**Ensure you have/are using a 64 bit JDK**, otherwise you will get an error
 
 ## How to install:
 
@@ -34,5 +34,5 @@ Ensure you have/are using a 64 bit JDK, otherwise you will get an error
     
   ### 5: Run!
   
-   * Be careful, I disabled the sound but it still runs some times and it's VERY loud.
+   * Be careful, I disabled the sound but it still runs some times and it's **VERY** loud.
     
