@@ -1,7 +1,7 @@
 package examples;
 
 import vizdoom.*;
-
+import sbbj_tpg.*;
 import java.util.*;
 import java.lang.*;
 
@@ -15,23 +15,21 @@ public class Basic {
         DoomGame game = new DoomGame();
 
         // Sets path to vizdoom engine executive which will be spawned as a separate process. Default is "./vizdoom".
-        game.setViZDoomPath("C:\\Users\\Cracker\\Desktop\\AI_5\\src\\vizdoom");
+        game.setViZDoomPath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\vizdoom");
 
         // Sets path to doom2 iwad resource file which contains the actual doom game-> Default is "./doom2.wad".
-        game.setDoomGamePath("C:\\Users\\Cracker\\Desktop\\AI_5\\src\\freedoom2.wad");
+        game.setDoomGamePath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\scenarios\\freedoom2.wad");
         //game.setDoomGamePath("../../bin/doom2.wad");   // Not provided with environment due to licences.
 
         // Sets path to additional resources iwad file which is basically your scenario iwad.
         // If not specified default doom2 maps will be used and it's pretty much useles... unless you want to play doom.
-        game.setDoomScenarioPath("C:\\Users\\Cracker\\Desktop\\AI_5\\src\\scenarios\\basic.wad");
+        game.setDoomScenarioPath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\scenarios\\basic.wad");
 
         // Set map to start (scenario .wad files can contain many maps).
         game.setDoomMap("map01");
 
         // Sets resolution. Default is 320X240
         game.setScreenResolution(ScreenResolution.RES_640X480);
-
-        game.setSoundEnabled(false);
 
         // Sets the screen buffer format. Not used here but now you can change it. Defalut is CRCGCB.
         game.setScreenFormat(ScreenFormat.RGB24);
@@ -92,51 +90,94 @@ public class Basic {
         actions.add(new double[] {0, 1, 1});
         actions.add(new double[] {0, 0, 1});
 
-        Random ran = new Random();
+        // Example Code execution when interacting with any API:
 
-        // Run this many episodes
-        int episodes = 10;
+        // Create a TPG instance with the parameters file and training flag
+        TPGAlgorithm tpgAlgorithm = new TPGAlgorithm("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\parameters.arg", "learn");
 
-        for (int i = 0; i < episodes; ++i) {
+        // Grab the TPG learning interface from the wrapper object
+        TPGLearn tpg = tpgAlgorithm.getTPGLearn();
 
-            System.out.println("Episode #" + (i + 1));
+        // Get the action pool from the API and give it to TPG in the form of a long array (long[])
+        tpg.setActions( new long[] {1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L} );
 
-            // Starts a new episode. It is not needed right after init() but it doesn't cost much and the loop is nicer.
-            game.newEpisode();
+        // Run the initialize method to create Team/Learner populations and prep for beginning learning
+        tpg.initialize();
 
-            while (!game.isEpisodeFinished()) {
+        // Create a variable for holding reward
+        double reward = 0.0;
 
-                // Get the state
-                GameState state = game.getState();
+        // Create an array for holding features
+        double[] inputFeatures = null;
 
-                int n               = state.number;
-                double[] vars       = state.gameVariables;
-                byte[] screenBuf    = state.screenBuffer;
-                byte[] depthBuf     = state.depthBuffer;
-                byte[] labelsBuf    = state.labelsBuffer;
-                byte[] automapBuf   = state.automapBuffer;
-                Label[] labels      = state.labels;
+        // Create a variable for the number of iterations
+        int numberOfIterations = 1000;
 
-                // Make random action and get reward
-                double r = game.makeAction(actions.get(ran.nextInt(3)));
+        // Keep a count of the number of games to play (learning dimensions)
+        int gamesToPlay = 1;
 
-                // You can also get last reward by using this function
-                // double r = game.getLastReward();
+        // Main Learning Loop
+        for( int i=0; i < numberOfIterations; i++ )
+        {
+            for( int j=0; j < gamesToPlay; j++ )
+            {
+                // Let every Team play the current game once
+                while( tpg.remainingTeams() > 0 )
+                {
 
-                System.out.println("State #" + n);
-                System.out.println("Game variables: " + Arrays.toString(vars));
-                System.out.println("Action reward: " + r);
-                System.out.println("=====================");
+                    // Reset the reward to 0.
+                    reward = 0.0;
 
+                    // This while loop would normally be while( game.episode_still_running() ), but
+                    // I don't have a game to simulate for you, so here I'm simply saying that each game
+                    // runs for 10 "frames" before offering reward and moving to the next Team.
+                    while( game.isEpisodeFinished() )
+                    {
+
+                        // Convert the gameState to a double[] somehow. This is a 5 feature space. A very small frame.
+                        inputFeatures = new double[]{1.0, 2.1, 3.2, 4.3, 5.4};
+
+                        // Accumulate the reward by getting TPG to play. TPG receives the input features,
+                        // then returns an action label, which is enacted on the environment. The environment
+                        // then returns a reward which can be applied immediately or stored for later use,
+                        // depending on what you want the algorithm to do.
+                        reward += game.makeAction(actions.get((int)tpg.participate( inputFeatures ) - 1));
+
+
+                    }
+
+                    // Reward the current Team. This automatically rotates the current Team.
+                    // The "game" string should be unique to the game the Team just played.
+                    // In single-game learning just make it static, but when you move on to
+                    // playing multiple games, you'll need to make sure the labels are correct.
+                    tpg.reward( "game", reward );
+                }
             }
 
-            System.out.println("Episode finished.");
-            System.out.println("Total reward: " + game.getTotalReward());
-            System.out.println("************************");
+            // Print the current top 10 Team population outcomes and some simple environment values
+            tpg.printStats(10);
+
+            // Tell TPG to Perform Selection
+            tpg.selection();
+
+            // Tell TPG to Reproduce and Mutate with the current Teams
+            tpg.generateNewTeams();
+
+            // Reset TPG so it increases the generation count and finds the new Root Teams
+            tpg.nextEpoch();
 
         }
 
         // It will be done automatically in destructor but after close You can init it again with different settings.
         game.close();
     }
+
+    public static double actOnEnvironment( long action )
+    {
+        // Return the action multiplied by 1000 * a value in [0.0,1.0) for a simple reward simulation.
+        // Adjust this reward to see varying TPG growth behaviour. For example, setting this to an
+        // action multiplied by some constant will see TPG learning to spit out large actions all the time.
+        return action * 1000 * Math.random();
+    }
+
 }
