@@ -4,8 +4,11 @@ import vizdoom.*;
 import sbbj_tpg.*;
 import java.util.*;
 import java.lang.*;
+import java.lang.Math;
 
 public class Basic {
+
+    final static int SCREEN_SIZE = 307202;
 
     public static void main (String[] args) {
 
@@ -23,7 +26,7 @@ public class Basic {
 
         // Sets path to additional resources iwad file which is basically your scenario iwad.
         // If not specified default doom2 maps will be used and it's pretty much useles... unless you want to play doom.
-        game.setDoomScenarioPath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\scenarios\\basic.wad");
+        game.setDoomScenarioPath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\scenarios\\defend_the_center.wad");
 
         // Set map to start (scenario .wad files can contain many maps).
         game.setDoomMap("map01");
@@ -35,7 +38,7 @@ public class Basic {
         game.setScreenFormat(ScreenFormat.RGB24);
 
         // Sets other rendering options
-        game.setRenderHud(false);
+        game.setRenderHud(true);
         game.setRenderCrosshair(false);
         game.setRenderWeapon(true);
         game.setRenderDecals(false);
@@ -45,11 +48,8 @@ public class Basic {
         game.setRenderCorpses(false);
 
         // Adds buttons that will be allowed.
-        Button[] availableButtons = new Button [] {Button.MOVE_LEFT, Button.MOVE_RIGHT, Button.ATTACK};
+        Button[] availableButtons = new Button [] {Button.TURN_LEFT, Button.TURN_RIGHT, Button.ATTACK};
         game.setAvailableButtons(availableButtons);
-        // game.addAvailableButton(Button.MOVE_LEFT); // Appends to available buttons.
-        // game.addAvailableButton(Button.MOVE_RIGHT);
-        // game.addAvailableButton(Button.ATTACK);
 
         // Returns table of available Buttons.
         // Button[] availableButtons = game.getAvailableButtons();
@@ -62,7 +62,7 @@ public class Basic {
         // GameVariable[] availableGameVariables = game.getAvailableGameVariables();
 
         // Causes episodes to finish after 200 tics (actions)
-        game.setEpisodeTimeout(200);
+        // game.setEpisodeTimeout(200);
 
         // Makes episodes start after 10 tics (~after raising the weapon)
         game.setEpisodeStartTime(10);
@@ -86,8 +86,8 @@ public class Basic {
         // MOVE_LEFT, MOVE_RIGHT, ATTACK
         // more combinations are naturally possible but only 3 are included for transparency when watching.
         List<double[]> actions = new ArrayList<double[]>();
-        actions.add(new double[] {1, 0, 1});
-        actions.add(new double[] {0, 1, 1});
+        actions.add(new double[] {1, 0, 0});
+        actions.add(new double[] {0, 1, 0});
         actions.add(new double[] {0, 0, 1});
 
         // Example Code execution when interacting with any API:
@@ -99,7 +99,7 @@ public class Basic {
         TPGLearn tpg = tpgAlgorithm.getTPGLearn();
 
         // Get the action pool from the API and give it to TPG in the form of a long array (long[])
-        tpg.setActions( new long[] {1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L} );
+        tpg.setActions( new long[] {1L, 2L, 3L} );
 
         // Run the initialize method to create Team/Learner populations and prep for beginning learning
         tpg.initialize();
@@ -107,8 +107,9 @@ public class Basic {
         // Create a variable for holding reward
         double reward = 0.0;
 
-        // Create an array for holding features
-        double[] inputFeatures = null;
+        //input features array
+        double[] inputFeatures = new double[SCREEN_SIZE];
+
 
         // Create a variable for the number of iterations
         int numberOfIterations = 1000;
@@ -131,18 +132,44 @@ public class Basic {
                     // This while loop would normally be while( game.episode_still_running() ), but
                     // I don't have a game to simulate for you, so here I'm simply saying that each game
                     // runs for 10 "frames" before offering reward and moving to the next Team.
-                    while( game.isEpisodeFinished() )
+
+                    int counter = 0;
+
+                    while( !game.isEpisodeFinished() )
                     {
 
-                        // Convert the gameState to a double[] somehow. This is a 5 feature space. A very small frame.
-                        inputFeatures = new double[]{1.0, 2.1, 3.2, 4.3, 5.4};
+                        //get screen buffer
+                        byte buffer[] = game.getState().screenBuffer;
 
-                        // Accumulate the reward by getting TPG to play. TPG receives the input features,
-                        // then returns an action label, which is enacted on the environment. The environment
-                        // then returns a reward which can be applied immediately or stored for later use,
-                        // depending on what you want the algorithm to do.
-                        reward += game.makeAction(actions.get((int)tpg.participate( inputFeatures ) - 1));
+                        int x = 0;
 
+                        //iterate over screen buffer
+                        while( x < buffer.length){
+                            int r;
+                            int g;
+                            int b;
+                            double f;
+
+                            r = buffer[x++] << 24;
+                            g = buffer[x++] << 16;
+                            b = buffer[x++] << 8;
+
+                            f = r | g | b;
+
+                            if(counter >= SCREEN_SIZE - 1){
+                                //System.out.println(counter + "\n");
+                            } else {
+                                inputFeatures[counter++] = f;
+                            }
+
+                        }
+
+                        long rawAction = tpg.participate(inputFeatures);
+
+                        int action = Math.round(rawAction);
+                        //System.out.println("Action chosen: " + action + " J = " + j + " I = " + i);
+
+                        reward += game.makeAction(actions.get(action));
 
                     }
 
@@ -151,6 +178,8 @@ public class Basic {
                     // In single-game learning just make it static, but when you move on to
                     // playing multiple games, you'll need to make sure the labels are correct.
                     tpg.reward( "game", reward );
+
+                    game.newEpisode();
                 }
             }
 
