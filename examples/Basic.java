@@ -18,15 +18,15 @@ public class Basic {
         DoomGame game = new DoomGame();
 
         // Sets path to vizdoom engine executive which will be spawned as a separate process. Default is "./vizdoom".
-        game.setViZDoomPath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\vizdoom");
+        game.setViZDoomPath("C:\\Users\\Cracker\\Desktop\\AI_5\\src\\vizdoom");
 
         // Sets path to doom2 iwad resource file which contains the actual doom game-> Default is "./doom2.wad".
-        game.setDoomGamePath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\scenarios\\freedoom2.wad");
+        game.setDoomGamePath("C:\\Users\\Cracker\\Desktop\\AI_5\\src\\scenarios\\freedoom2.wad");
         //game.setDoomGamePath("../../bin/doom2.wad");   // Not provided with environment due to licences.
 
         // Sets path to additional resources iwad file which is basically your scenario iwad.
         // If not specified default doom2 maps will be used and it's pretty much useles... unless you want to play doom.
-        game.setDoomScenarioPath("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\scenarios\\defend_the_center.wad");
+        game.setDoomScenarioPath("C:\\Users\\Cracker\\Desktop\\AI_5\\src\\scenarios\\defend_the_center.wad");
 
         // Set map to start (scenario .wad files can contain many maps).
         game.setDoomMap("map01");
@@ -70,8 +70,6 @@ public class Basic {
         // Makes the window appear (turned on by default)
         game.setWindowVisible(true);
 
-        // Turns on the sound. (turned off by default)
-        game.setSoundEnabled(true);
 
         // Sets ViZDoom mode (PLAYER, ASYNC_PLAYER, SPECTATOR, ASYNC_SPECTATOR, PLAYER mode is default)
         game.setMode(Mode.PLAYER);
@@ -93,7 +91,7 @@ public class Basic {
         // Example Code execution when interacting with any API:
 
         // Create a TPG instance with the parameters file and training flag
-        TPGAlgorithm tpgAlgorithm = new TPGAlgorithm("C:\\Users\\Howard Pearce\\Desktop\\AI_V4\\src\\parameters.arg", "learn");
+        TPGAlgorithm tpgAlgorithm = new TPGAlgorithm("C:\\Users\\Cracker\\Desktop\\AI_5\\src\\parameters.arg", "learn");
 
         // Grab the TPG learning interface from the wrapper object
         TPGLearn tpg = tpgAlgorithm.getTPGLearn();
@@ -108,7 +106,7 @@ public class Basic {
         double reward = 0.0;
 
         //input features array
-        double[] inputFeatures = new double[SCREEN_SIZE];
+
 
 
         // Create a variable for the number of iterations
@@ -133,40 +131,33 @@ public class Basic {
                     // I don't have a game to simulate for you, so here I'm simply saying that each game
                     // runs for 10 "frames" before offering reward and moving to the next Team.
 
-                    int counter = 0;
+
 
                     while( !game.isEpisodeFinished() )
                     {
 
+                        int counter = 0;
+
                         //get screen buffer
                         byte buffer[] = game.getState().screenBuffer;
 
-                        int x = 0;
+                        double[] inputFeatures = new double[buffer.length/3];
 
                         //iterate over screen buffer
-                        while( x < buffer.length){
-                            int r;
-                            int g;
-                            int b;
-                            double f;
+                        for(int x = 0; x < buffer.length; x += 3){
 
-                            r = buffer[x++] << 24;
-                            g = buffer[x++] << 16;
-                            b = buffer[x++] << 8;
-
-                            f = r | g | b;
+                            double rgb = ((buffer[x]&0x0FF)<<16) | ((buffer[x+1]&0x0FF)<<8) | ((buffer[x+2])&0x0FF);
 
                             if(counter >= SCREEN_SIZE - 1){
                                 //System.out.println(counter + "\n");
                             } else {
-                                inputFeatures[counter++] = f;
+                                inputFeatures[counter++] = rgb;
                             }
 
                         }
 
-                        long rawAction = tpg.participate(inputFeatures);
+                        int action = (int)tpg.participate(inputFeatures) - 1;
 
-                        int action = Math.round(rawAction);
                         //System.out.println("Action chosen: " + action + " J = " + j + " I = " + i);
 
                         reward += game.makeAction(actions.get(action));
