@@ -171,27 +171,21 @@ public class Basic {
     }
 
     public static double[] getFeatures(byte buffer[]){
-
-
-        double[] inputFeatures = new double[buffer.length/3];
-
+        int size = buffer.length/3;
+        double[] inputFeatures = new double[size];
         int counter = 0;
 
         //iterate over screen buffer
         for(int x = 0; x < buffer.length; x += 3){
-
-            double rgb = ((buffer[x]&0x0FF)<<16) | ((buffer[x+1]&0x0FF)<<8) | ((buffer[x+2])&0x0FF);
-
+            double byteValue = ((buffer[x]&0x0FF)<<16) | ((buffer[x+1]&0x0FF)<<8) | ((buffer[x+2])&0x0FF);
             if(counter >= SCREEN_SIZE - 1){
                 //System.out.println(counter + "\n");
             } else {
-                inputFeatures[counter++] = rgb;
+                inputFeatures[counter++] = byteValue;
             }
-
         }
 
         return inputFeatures;
-
     }
 
 }
